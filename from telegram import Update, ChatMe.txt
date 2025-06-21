@@ -1,7 +1,7 @@
 from telegram import Update, ChatMember, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, CallbackQueryHandler, filters, ContextTypes
 
-TOKEN = "8049811207:AAEi98HtcBtnaSbAcIQMw9UvLS0emxfqFXY"
+TOKEN = os.getenv("BOT_TOKEN")
 CHANNEL_USERNAME = "@AhA_90"
 
 async def is_user_subscribed(bot, user_id: int) -> bool:
