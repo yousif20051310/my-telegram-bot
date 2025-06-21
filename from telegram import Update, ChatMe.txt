@@ -1,0 +1,107 @@
+from telegram import Update, ChatMember, InlineKeyboardMarkup, InlineKeyboardButton
+from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, CallbackQueryHandler, filters, ContextTypes
+
+TOKEN = "8049811207:AAEi98HtcBtnaSbAcIQMw9UvLS0emxfqFXY"
+CHANNEL_USERNAME = "@AhA_90"
+
+async def is_user_subscribed(bot, user_id: int) -> bool:
+    try:
+        member = await bot.get_chat_member(CHANNEL_USERNAME, user_id)
+        return member.status in [ChatMember.MEMBER, ChatMember.ADMINISTRATOR, ChatMember.OWNER]
+    except Exception as e:
+        print(f"Error checking subscription: {e}")
+        return False
+
+def decorate_arabic(text: str) -> list[str]:
+    styles = [
+        f"『{text}』", f"︽{text}︽", f"「{text}」", f"ـ{text}ـ", f"꧁{text}꧂",
+        f"↫{text}↬", f"『 ★ 』{text}", f"╭┈─╮{text}╰─┈╯", f"✦ {text} ✦", f"♡{text}♡",
+        f"⧼{text}⧽", f"⟦{text}⟧", f"✿ {text} ✿", f"• {text} •", f"⫷{text}⫸"
+    ]
+    fancy_map = {
+        "ا": "آ", "ب": "بٰ", "ت": "ت̲", "ث": "ثـ", "ج": "جـ", "ح": "حـ", "خ": "خ̲",
+        "د": "دِ", "ذ": "ذٰ", "ر": "رٍ", "ز": "زُ", "س": "سً", "ش": "شـ", "ص": "صٰ",
+        "ض": "ضِ", "ط": "طٍ", "ظ": "ظً", "ع": "عـ", "غ": "غٍ", "ف": "فٰ", "ق": "قٍ",
+        "ك": "كٰ", "ل": "ل̲", "م": "مـ", "ن": "نٰ", "ه": "هـ", "و": "ۈ", "ي": "يِ"
+    }
+    fancy_text = "".join(fancy_map.get(c, c) for c in text)
+    styles.append(f"🎀 {fancy_text} 🎀")
+    return styles
+
+def decorate_english(text: str) -> list[str]:
+    styles = [
+        f"『{text}』", f"︽{text}︽", f"「{text}」", f"~{text}~", f"꧁{text}꧂",
+        f"↫{text}↬", f"『 ★ 』{text}", f"╭┈─╮{text}╰─┈╯", f"✦ {text} ✦", f"♡{text}♡",
+        f"⧼{text}⧽", f"⟦{text}⟧", f"✿ {text} ✿", f"• {text} •", f"⫷{text}⫸"
+    ]
+    fancy_map = {
+        "a": "𝒶", "b": "𝒷", "c": "𝒸", "d": "𝒹", "e": "𝑒", "f": "𝒻", "g": "𝑔", "h": "𝒽",
+        "i": "𝒾", "j": "𝒿", "k": "𝓀", "l": "𝓁", "m": "𝓂", "n": "𝓃", "o": "𝑜", "p": "𝓅",
+        "q": "𝓆", "r": "𝓇", "s": "𝓈", "t": "𝓉", "u": "𝓊", "v": "𝓋", "w": "𝓌", "x": "𝓍",
+        "y": "𝓎", "z": "𝓏"
+    }
+    fancy_text = "".join(fancy_map.get(c.lower(), c) for c in text)
+    styles.append(f"🌟 {fancy_text} 🌟")
+    return styles
+
+def is_arabic(text: str) -> bool:
+    return any('\u0600' <= c <= '\u06FF' for c in text)
+
+WELCOME_MESSAGE = (
+    "✨ *مرحباً بك في بوت الزخرفة الاحترافي!* ✨\n\n"
+    "🖋️ هذا البوت متخصص بزخرفة الكلمات العربية والإنجليزية!\n"
+    "💬 فقط أرسل لي أي كلمة، وسأزخرفها لك بأنماط رائعة.\n\n"
+    f"📢 *قبل استخدام البوت، يرجى الاشتراك في القناة التالية:* {CHANNEL_USERNAME}"
+)
+
+USAGE_GUIDE = (
+    "✅ *تم التفعيل!*\n\n"
+    "✏️ أرسل أي كلمة بالعربية أو الإنجليزية\n"
+    "🎨 وستصلك 15 زخرفة جميلة\n"
+    "📌 فقط اضغط على الزخرفة لنسخها!"
+)
+
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    bot = context.bot
+    if not await is_user_subscribed(bot, user_id):
+        await update.message.reply_text(WELCOME_MESSAGE, parse_mode="Markdown")
+    else:
+        await update.message.reply_text(USAGE_GUIDE, parse_mode="Markdown")
+
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    bot = context.bot
+    text = update.message.text
+
+    if not text:
+        return
+
+    if not await is_user_subscribed(bot, user_id):
+        await update.message.reply_text(
+            f"⚠️ يجب الاشتراك في القناة لاستخدام البوت:\n{CHANNEL_USERNAME}"
+        )
+        return
+
+    decorations = decorate_arabic(text) if is_arabic(text) else decorate_english(text)
+    keyboard = [[InlineKeyboardButton(txt, callback_data=txt)] for txt in decorations]
+    await update.message.reply_text(
+        "👇 اختر الزخرفة التي تعجبك، اضغط لنسخها:",
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+async def handle_button(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    await query.message.reply_text(f"✅ تم النسخ:\n{query.data}")
+
+def main():
+    app = ApplicationBuilder().token(TOKEN).build()
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CallbackQueryHandler(handle_button))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    print("✅ بوت الزخرفة يعمل الآن...")
+    app.run_polling()
+
+if __name__ == "__main__":
+    main()
